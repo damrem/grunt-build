@@ -1,0 +1,29 @@
+{
+  "name": "grunt-build",
+  "description": "",
+  "version": "0.1.0",
+  "author": "Emil Ingerslev <emil.ingerslev@gmail.com>",
+  "homepage": "https://github.com/einoodle/grunt-build",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/einoodle/grunt-build.git"
+  },
+  "dependencies": {
+    "coffee-script": "1.3.x",
+    "stylus": "0.27.2",
+    "grunt": "~0.3.15",
+    "consolidate-build": "~0.1.0",
+    "wrench": "~1.3.9",
+    "stylus": "~0.29.0",
+    "coffee-script": "~1.3.3",
+    "eco": "~1.1.0-rc-3"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "main": "./lib/grunt-build",
+  "engines": {
+    "node": "0.8.x"
+  },
+  "contributors": [],
+  "optionalDependencies": {}
+}
