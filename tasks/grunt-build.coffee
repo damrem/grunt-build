@@ -17,7 +17,7 @@ module.exports = (grunt) ->
 
     errors = []
 
-    destination = fs.realpathSync(@data.dest)
+    destination = "#{fs.realpathSync('.')}/#{@data.dest}"
 
     clearOldDir = (callback) =>
       if @data.clear
