@@ -1,54 +1,55 @@
 module.exports = (grunt) ->
 
-  fs = require 'fs'
+  fs = require 'fs'  
   wrench = require 'wrench'
 
   build = require('consolidate-build')
   path = require('path')
+  _ = require('underscore')
+
+  actions = for actionPath in fs.readdirSync fs.realpathSync(path.join(__dirname, 'actions'))
+    require("./actions/#{actionPath}")(grunt)
 
   grunt.registerMultiTask 'build', 'Build scripts', ->
-    files = grunt.file.expandFiles @data.src
+
+    callActions = (method, args...) =>
+      for action in actions
+        action[method]?.apply(@, args)
+
+    addStepsForActions = (method) =>
+      for action in actions when action[method]?
+        do (action) =>
+          steps.push (next) =>
+            action[method].apply(@, [next])
+
+    callActions 'initialize'
+
+    @files = grunt.file.expandFiles @data.src
     asyncDone = this.async()
     filesDone = 0
-    done = ->
-      filesDone++
-      if filesDone is files.length
-        asyncDone()
+    
+    @destination = path.join fs.realpathSync('.'), @data.dest
+     
+    steps = []
 
-    errors = []
+    addStepsForActions 'beforeBuild'
 
-    destination = "#{fs.realpathSync('.')}/#{@data.dest}"
-
-    clearOldDir = (callback) =>
-      if @data.clear
-        try
-          wrench.rmdirSyncRecursive(destination, yes)
-          console.log "Cleared old content (#{destination})" if @verbose
-          callback()
-        catch e
-          console.log "Got an error trying to delete old dir (#{destination}). Trying again."
-          errors.push description: 'remove old build-directory', error: e
-          setTimeout (-> clearOldDir(callback)), 10
-
-    clearOldDir =>
-
-      for file in files
-        do (file) =>
-
+    for file in @files
+      do (file) =>
+        steps.push (next) =>
           extension = path.extname(file).substring(1)
           builder = grunt.utils._.find(build, (x) -> x.inExtension is extension)
 
           inExtension = builder?.inExtension ? extension
           outExtension = builder?.outExtension ? extension
-          outFile = path.join destination, path.relative(@data.srcRoot, file[0...file.length-inExtension.length] + outExtension)
+          @outFile = path.join @destination, path.relative(@data.srcRoot, file[0...file.length-inExtension.length] + outExtension)
 
-          directory = path.dirname(outFile)
-          console.log directory if @verbose
+          directory = path.dirname(@outFile)
           try
             wrench.mkdirSyncRecursive(directory, '0o0777')
+            grunt.log.debug "Created #{directory}"
           catch e
-            errors.push description: 'creating new build-directory', error: e
-            # do nothing
+            grunt.fail "Got an error trying to create destination #{directory} (Error: #{e})"
           
           if builder
             builderOptions = @data[inExtension] ? {}
@@ -59,18 +60,26 @@ module.exports = (grunt) ->
               else
                 output
 
-              fs.writeFile outFile, writeContent, ->
-                done()
-            console.log outFile if @verbose
+              fs.writeFile @outFile, writeContent, ->
+                grunt.log.debug "Created #{@outFile}"
+                callActions 'completedFile', {file: @outFile}
+                next()
           else
             inStr = fs.createReadStream(file)
-            outStr = fs.createWriteStream(outFile)
+            outStr = fs.createWriteStream(@outFile)
             inStr.pipe(outStr)
-            console.log outFile if @verbose
-            done()
+            grunt.log.debug "Created #{@outFile}"
+            callActions 'completedFile', {file: @outFile}
+            next()
 
-      if errors.length
-        console.log "Got #{if errors.length is 1 then 'a error' else errors.length + ' errors'} compiling:"
-        for error in errors
-          console.log "when #{error.description}:"
-          console.log "error: #{error.error}:"
+    steps.push (next) =>
+      callActions 'completedBuild'
+      asyncDone()
+      next()
+
+    run = =>
+      if steps.length
+        step = steps.shift()
+        step(run)
+
+    run()
