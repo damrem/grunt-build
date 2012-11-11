@@ -1,7 +1,7 @@
 {
   "name": "grunt-build",
   "description": "",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Emil Ingerslev <emil.ingerslev@gmail.com>",
   "homepage": "https://github.com/einoodle/grunt-build",
   "repository": {
